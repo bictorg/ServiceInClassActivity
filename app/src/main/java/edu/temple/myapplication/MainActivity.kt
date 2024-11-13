@@ -12,7 +12,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val countdownInput = findViewById<EditText>(R.id.countdownInput)
+        val countdownInput = findViewById<EditText>(R.id.editTextCountdown) // Fixed ID to match layout
         val startButton = findViewById<Button>(R.id.startButton)
 
         startButton.setOnClickListener {
