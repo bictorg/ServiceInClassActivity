@@ -2,111 +2,41 @@ package edu.temple.myapplication
 
 import android.app.Service
 import android.content.Intent
-import android.os.Binder
-import android.os.Handler
 import android.os.IBinder
 import android.util.Log
+import kotlinx.coroutines.*
 
-@Suppress("ControlFlowWithEmptyBody")
 class TimerService : Service() {
-
-    private var isRunning = false
-
-    lateinit var t: TimerThread
-
-    private var paused = false
-
-    inner class TimerBinder : Binder() {
-
-        // Check if Timer is already running
-        var isRunning: Boolean
-            get() = this@TimerService.isRunning
-            set(value) {this@TimerService.isRunning = value}
-
-        // Start a new timer
-        fun start(startValue: Int){
-
-            if (!paused) {
-                if (!isRunning) {
-                    if (::t.isInitialized) t.interrupt()
-                    this@TimerService.start(startValue)
-                }
-            } else {
-                pause()
-            }
+    private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
+    
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Get the countdown value from the intent
+        val countdownValue = intent?.getIntExtra("COUNTDOWN_VALUE", 0) ?: 0
+        
+        // Start the countdown using coroutines
+        serviceScope.launch {
+            startCountdown(countdownValue)
         }
-
-        // Stop a currently running timer
-        fun stop() {
-            if (::t.isInitialized || isRunning) {
-                t.interrupt()
-            }
-        }
-
-        // Pause a running timer
-        fun pause() {
-            this@TimerService.pause()
-        }
-
+        
+        return START_NOT_STICKY
     }
 
-    override fun onCreate() {
-        super.onCreate()
-
-        Log.d("TimerService status", "Created")
-    }
-
-    override fun onBind(intent: Intent): IBinder {
-        return TimerBinder()
-    }
-
-    fun start(startValue: Int) {
-        t = TimerThread(startValue)
-        t.start()
-    }
-
-    fun pause () {
-        if (::t.isInitialized) {
-            paused = !paused
-            isRunning = !paused
+    private suspend fun startCountdown(fromValue: Int) {
+        for (i in fromValue downTo 0) {
+            Log.d("TimerService", "Countdown: $i")
+            delay(1000) // Wait for 1 second
         }
+        Log.d("TimerService", "Countdown finished!")
     }
 
-    inner class TimerThread(private val startValue: Int) : Thread() {
-
-        override fun run() {
-            isRunning = true
-            try {
-                for (i in startValue downTo 1)  {
-                    Log.d("Countdown", i.toString())
-
-                        while (paused);
-                        sleep(1000)
-
-                }
-                isRunning = false
-            } catch (e: InterruptedException) {
-                Log.d("Timer interrupted", e.toString())
-                isRunning = false
-                paused = false
-            }
-        }
-
-    }
-
-    override fun onUnbind(intent: Intent?): Boolean {
-        if (::t.isInitialized) {
-            t.interrupt()
-        }
-
-        return super.onUnbind(intent)
+    override fun onBind(intent: Intent?): IBinder? {
+        // This is a started service, not a bound service
+        return null
     }
 
     override fun onDestroy() {
         super.onDestroy()
-
-        Log.d("TimerService status", "Destroyed")
+        // Cancel all coroutines when the service is destroyed
+        serviceScope.cancel()
     }
-
-
 }
